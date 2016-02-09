@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Custom compass</string>
+    <string name="longitude">LONGITUDE</string>
+    <string name="latitude">LATITUDE</string>
+    <string name="fixed">FIXED</string>
+</resources>
