@@ -27,6 +27,8 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import java.security.Provider;
+
 public class CompassActivity extends AppCompatActivity implements SensorEventListener {
     public LocationManager mLocationManager;
     private MyLocationListener mLocationListener;
@@ -36,7 +38,7 @@ public class CompassActivity extends AppCompatActivity implements SensorEventLis
     private EditText longitude;
     private EditText latitude;
     public static final String FIXED = "FIXED";
-    private static final int LOCATION_MIN_TIME = 30 * 1000;
+    private static final int LOCATION_MIN_TIME = 2 * 60 * 1000;
     private static final int LOCATION_MIN_DISTANCE = 10;
     private float[] gravity = new float[3];
     private float[] geomagnetic = new float[3];
@@ -49,6 +51,8 @@ public class CompassActivity extends AppCompatActivity implements SensorEventLis
     private GeomagneticField geomagneticField;
     private double bearing = 0;
     private NeedleView needleView;
+    private boolean gpsEnabled=false;
+    private boolean networkEnabled=false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,15 +74,9 @@ public class CompassActivity extends AppCompatActivity implements SensorEventLis
         longitude = (EditText) findViewById(R.id.LONGITUDE);
         longitude.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                //nop
-            }
-
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {/* nop */}
             @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                //nop
-            }
-
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {/* nop */}
             @Override
             public void afterTextChanged(Editable editable) {
                 if ( longitude.getText() != null && longitude.getText().toString().length() != 0 ) {
@@ -89,15 +87,9 @@ public class CompassActivity extends AppCompatActivity implements SensorEventLis
         latitude = (EditText) findViewById(R.id.LATITUDE);
         longitude.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                //nop
-            }
-
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {/* nop */}
             @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                //nop
-            }
-
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {/* nop */}
             @Override
             public void afterTextChanged(Editable editable) {
                 if ( latitude.getText() != null && latitude.getText().toString().length() != 0 ) {
@@ -116,42 +108,42 @@ public class CompassActivity extends AppCompatActivity implements SensorEventLis
         sensorGravity = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensorMagnetic = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         mLocationListener = new MyLocationListener();
-        mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        mLocationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER,
+        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        // check if gps ant network is available
+        gpsEnabled = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        networkEnabled = mLocationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
+        // register listeners
+        if (gpsEnabled) mLocationManager.requestLocationUpdates(mLocationManager.GPS_PROVIDER,
                 LOCATION_MIN_TIME,
                 LOCATION_MIN_DISTANCE,
                 mLocationListener);
-
-        // register listeners
+        if (networkEnabled) mLocationManager.requestLocationUpdates(mLocationManager.NETWORK_PROVIDER,
+                LOCATION_MIN_TIME,
+                LOCATION_MIN_DISTANCE,
+                mLocationListener);
         sensorManager.registerListener(this, sensorGravity, SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this, sensorMagnetic, SensorManager.SENSOR_DELAY_NORMAL);
 
         // retrieve current location
-        mLocationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER, mLocationListener, Looper.getMainLooper());
-        userLastLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-
+        if (networkEnabled) {
+            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, mLocationListener, null);
+            userLastLocation = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        } else if (gpsEnabled) {
+            mLocationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER, mLocationListener, null);
+            userLastLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        }
         if (userLastLocation != null) {
             currentLocation = userLastLocation;
         } else {
-            // try with network provider
-            Location networkLocation = mLocationManager
-                    .getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-
-            if (networkLocation != null) {
-                currentLocation = networkLocation;
-            } else {
-                currentLocation = new Location(FIXED);
-                currentLocation.setAltitude(1);
-                currentLocation.setLatitude(1);
-                currentLocation.setLongitude(1);
-            }
-
-            onLocationChanged(currentLocation);
+            currentLocation = new Location(FIXED);
+            currentLocation.setAltitude(1);
+            currentLocation.setLatitude(1);
+            currentLocation.setLongitude(1);
         }
-
+        onLocationChanged(currentLocation);
     }
-
     @Override
     protected void onStop() {
         super.onStop();

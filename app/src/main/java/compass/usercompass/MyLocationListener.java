@@ -7,7 +7,6 @@ import android.util.Log;
 
 public class MyLocationListener implements LocationListener {
 
-
     @Override
     public void onLocationChanged(final Location location) {
         Log.i("TEST Location", "TEST Location changed to: " + location.toString());
